@@ -1,0 +1,29 @@
+# Python and Django
+__pycache__/
+*.py[cod]
+*.sqlite3
+db.sqlite3
+
+# Virtual environments
+env/
+venv/
+
+# VS Code
+.vscode/
+
+# Static & media files (optional)
+staticfiles/
+media/
+
+# AI model files
+*.h5
+*.hdf5
+*.pkl
+*.pt
+*.tflite
+
+# Environment files
+.env
+
+# Logs
+*.log
