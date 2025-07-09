@@ -4,7 +4,7 @@ from rest_framework import status
 from ..models import Evidence
 from ..utils.ai_models import check_tampering
 from ..utils.metadata import verify_metadata
-from ..utils.blockchain import log_verification
+
 import json
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -41,12 +41,12 @@ class VerifyEvidence(APIView):
         img_path = evidence.image.path
         label, confidence = check_tampering(img_path)
         metadata = verify_metadata(img_path)
-        blockchain_hash = log_verification(img_path)
+       
 
         evidence.is_authentic = (label == 'Real')
         evidence.confidence = float(confidence)
         evidence.metadata_status = metadata['status']
-        evidence.blockchain_hash = blockchain_hash
+        
         evidence.save()
 
         results = {
@@ -56,7 +56,7 @@ class VerifyEvidence(APIView):
             'confidence': evidence.confidence,
             'metadata_status': metadata['status'],
             'metadata_details': metadata.get('details', {}),
-            'blockchain_hash': blockchain_hash,
+           
         }
         return Response(results, status=status.HTTP_200_OK)
 
