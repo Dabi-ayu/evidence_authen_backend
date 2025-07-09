@@ -25,6 +25,10 @@ from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
 
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from evidence_app.models import Evidence
+from evidence_app.utils.blockchain import generate_ots
 
 class VerifyEvidence(APIView):
     authentication_classes = [JWTAuthentication]
@@ -49,6 +53,10 @@ class VerifyEvidence(APIView):
         
         evidence.save()
 
+        hash_value = generate_ots(img_path)
+        evidence.blockchain_hash = hash_value
+        evidence.save()
+
         results = {
             'id': evidence.id,
             'image_url': evidence.image.url,
@@ -56,6 +64,7 @@ class VerifyEvidence(APIView):
             'confidence': evidence.confidence,
             'metadata_status': metadata['status'],
             'metadata_details': metadata.get('details', {}),
+            'blockchainHash': hash_value,
            
         }
         return Response(results, status=status.HTTP_200_OK)
@@ -64,28 +73,23 @@ class VerifyEvidence(APIView):
 @csrf_exempt
 @api_view(['POST'])
 def verify_txid(request):
-    try:
-        body = request.data
-        txid = body.get("txid")
+    if request.method == 'POST':
+        try:
+            body = json.loads(request.body)
+            txid = body.get('txid')
 
-        ledger_path = os.path.join(os.path.dirname(__file__), '../utils/blockchain_ledger.json')
-        if not os.path.exists(ledger_path):
-            return JsonResponse({"status": "error", "message": "Ledger file not found"}, status=404)
+            # Match this with actual file path
+            ots_path = f"media/ots_files/{txid}.ots"  # Update this path as needed
 
-        with open(ledger_path, 'r') as f:
-            ledger = json.load(f)
+            result = verify_ots(ots_path)
 
-        for entry in ledger:
-            if entry["txid"] == txid:
-                return JsonResponse({
-                    "status": "valid",
-                    "data": entry
-                })
-
-        return JsonResponse({"status": "invalid", "message": "TXID not found in ledger"}, status=404)
-
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=500)
+            if result['valid']:
+                return JsonResponse({'status': 'valid', 'data': result})
+            else:
+                return JsonResponse({'status': 'invalid', 'message': result.get('message', 'Verification failed')})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'})
 
 
 @csrf_exempt
@@ -179,3 +183,20 @@ class RegisterView(APIView):
 
         except Exception as e:
             return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+@api_view(['POST'])
+def upload_image(request):
+    image = request.FILES.get('image')
+    title = request.data.get('title', 'Untitled')
+
+    if not image:
+        return Response({'status': 'error', 'message': 'No image uploaded'}, status=400)
+
+    evidence = Evidence.objects.create(title=title, image=image)
+
+    return Response({
+        'status': 'complete',
+        'message': 'Image uploaded successfully',
+        'blockchainHash': evidence.blockchain_hash,
+        'imageUrl': evidence.image.url
+    })
