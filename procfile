@@ -1,1 +1,1 @@
-web: gunicorn evidence_authenticator.wsgi --log-file -
+web: gunicorn evidence_authenticator.wsgi
