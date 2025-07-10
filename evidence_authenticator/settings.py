@@ -15,6 +15,8 @@ import os
 
 from dotenv import load_dotenv
 from datetime import timedelta
+from pathlib import Path
+
 # Load the .env file
 load_dotenv()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
