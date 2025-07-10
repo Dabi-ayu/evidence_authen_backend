@@ -35,7 +35,7 @@ SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-secret')  # Replace f
 DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
 
-
+BASE_DIR = Path(__file__).resolve().parent.parent
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
