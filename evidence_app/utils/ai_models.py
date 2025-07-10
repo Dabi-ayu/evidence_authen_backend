@@ -2,11 +2,30 @@ import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
 import os
+import requests
+from pathlib import Path
 
-# Use raw string for Windows paths and make it relative
-MODEL_PATH = os.path.join(os.path.dirname(__file__), 'vgg19.h5')
+# Define where to store/load the model
+BASE_DIR = Path(__file__).resolve().parent
+MODEL_PATH = BASE_DIR / 'vgg19.h5'
+
+# ✅ Download model if not present
+def download_model():
+    if not MODEL_PATH.exists():
+        print("Downloading VGG19 model...")
+        url = "https://drive.google.com/file/d/1cX2AQ67R_hCKXxb2tcVhQUjUUdkpkeeS/view/vgg19.h5"  # 🔁 Replace with a real download URL
+        response = requests.get(url)
+        response.raise_for_status()
+        with open(MODEL_PATH, 'wb') as f:
+            f.write(response.content)
+        print("Model download complete.")
+
+download_model()
+
+# ✅ Load model
 model = tf.keras.models.load_model(MODEL_PATH)
 
+# ✅ Function to check tampering
 def check_tampering(image_path):
     img = image.load_img(image_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
