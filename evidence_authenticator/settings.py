@@ -31,12 +31,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: don't run with debug turned on in production!
 
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'fallback-secret')  # Replace fallback-secret with anything
-DEBUG = os.environ.get('DEBUG', 'False') == 'True'
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost').split(',')
+
+SECRET_KEY = 'django-insecure-)-h-khokfl@h7k^^esvc%il82)o-i1_xwjy@mndo$f-=c=3j-t'
+
+DEBUG = True
+ALLOWED_HOSTS = []
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
 
 
 
