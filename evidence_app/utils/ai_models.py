@@ -1,31 +1,30 @@
+import os
+import requests
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
-import os
-import requests
 from pathlib import Path
 
-# Define where to store/load the model
-BASE_DIR = Path(__file__).resolve().parent
-MODEL_PATH = BASE_DIR / 'vgg19.h5'
+# Define model path
+MODEL_PATH = Path(__file__).resolve().parent / "vgg19.h5"
 
-# ✅ Download model if not present
+# Download the model if it doesn't exist
 def download_model():
     if not MODEL_PATH.exists():
-        print("Downloading VGG19 model...")
-        url = "https://drive.google.com/file/d/1cX2AQ67R_hCKXxb2tcVhQUjUUdkpkeeS/view/vgg19.h5"  # 🔁 Replace with a real download URL
+        print("Model not found. Downloading...")
+        url = "https://drive.google.com/uc?export=download&id=156qm5ArGZAueKbvRj727ZOopvvOBkHI4"
         response = requests.get(url)
         response.raise_for_status()
         with open(MODEL_PATH, 'wb') as f:
             f.write(response.content)
-        print("Model download complete.")
+        print("Model downloaded successfully.")
 
+# Call download
 download_model()
 
-# ✅ Load model
+# Load model
 model = tf.keras.models.load_model(MODEL_PATH)
 
-# ✅ Function to check tampering
 def check_tampering(image_path):
     img = image.load_img(image_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
