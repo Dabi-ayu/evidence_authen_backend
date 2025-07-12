@@ -28,3 +28,4 @@ media/
 # Logs
 *.log
 *.ots
+.keras
