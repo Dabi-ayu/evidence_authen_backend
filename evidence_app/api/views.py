@@ -1,95 +1,93 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from ..models import Evidence
-from ..utils.ai_models import check_tampering
-from ..utils.metadata import verify_metadata
-
-import json
-from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
-import os
-
-from django.contrib.auth.models import User
-from django.contrib.auth import authenticate, login, logout
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.authentication import JWTAuthentication
-from rest_framework.decorators import api_view, permission_classes, authentication_classes
 
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from rest_framework import status
 from django.contrib.auth.models import User
+from django.contrib.auth import authenticate
 from django.contrib.auth.hashers import make_password
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
+from django.http import JsonResponse, FileResponse, Http404
 
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from evidence_app.models import Evidence
-from evidence_app.utils.blockchain import generate_ots
+from ..models import Evidence
+from ..utils.ai_models import check_tampering
+from ..utils.metadata import verify_metadata
+from ..utils.imagehash import generate_sha256_hash
+
+# Assuming this exists
+
+import json
+import os
+
 
 class VerifyEvidence(APIView):
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        image_file = request.FILES.get('image')
-        if not image_file:
-            return Response({'detail': 'No image provided'}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            image_file = request.FILES.get('image')
+            if not image_file:
+                return Response({'detail': 'No image provided'}, status=400)
 
-        evidence = Evidence(image=image_file)
-        evidence.save()
+            evidence = Evidence(image=image_file)
+            evidence.save()
 
-        img_path = evidence.image.path
-        label, confidence = check_tampering(img_path)
-        metadata = verify_metadata(img_path)
-       
+            img_path = evidence.image.path
 
-        evidence.is_authentic = (label == 'Real')
-        evidence.confidence = float(confidence)
-        evidence.metadata_status = metadata['status']
-        
-        evidence.save()
+            # Log path to confirm image is saved
+            print("[DEBUG] Saved image path:", img_path)
 
-        hash_value = generate_ots(img_path)
-        evidence.blockchain_hash = hash_value
-        evidence.save()
+            # AI + Metadata
+            label, confidence = check_tampering(img_path)
+            print("[DEBUG] AI Label:", label, "| Confidence:", confidence)
 
-        results = {
-            'id': evidence.id,
-            'image_url': evidence.image.url,
-            'is_authentic': evidence.is_authentic,
-            'confidence': evidence.confidence,
-            'metadata_status': metadata['status'],
-            'metadata_details': metadata.get('details', {}),
-            'blockchainHash': hash_value,
-           
-        }
-        return Response(results, status=status.HTTP_200_OK)
+            metadata = verify_metadata(img_path)
+            print("[DEBUG] Metadata:", metadata)
+
+            hash_value = generate_sha256_hash(img_path)
+            if not hash_value:
+                return Response({'error': 'Hashing failed'}, status=500)
+
+            # Save Results
+            evidence.is_authentic = (label == 'Real')
+            evidence.confidence = float(confidence)
+            evidence.metadata_status = metadata['status']
+            evidence.image_hash = hash_value
+            evidence.save()
+
+            results = {
+                'id': evidence.id,
+                'image_url': evidence.image.url,
+                'is_authentic': evidence.is_authentic,
+                'confidence': evidence.confidence,
+                'metadata_status': metadata['status'],
+                'metadata_details': metadata.get('details', {}),
+                'image_hash': hash_value,
+            }
+            print("[DEBUG] Response payload:", results)
+            return Response(results, status=200)
+
+        except Exception as e:
+            import traceback
+            print("❌ ERROR in /api/verify:")
+            traceback.print_exc()
+            return Response({'error': str(e)}, status=500)
+
 
 
 @csrf_exempt
-@api_view(['POST'])
-def verify_txid(request):
-    if request.method == 'POST':
-        try:
-            body = json.loads(request.body)
-            txid = body.get('txid')
-
-            # Match this with actual file path
-            ots_path = f"media/ots_files/{txid}.ots"  # Update this path as needed
-
-            result = verify_ots(ots_path)
-
-            if result['valid']:
-                return JsonResponse({'status': 'valid', 'data': result})
-            else:
-                return JsonResponse({'status': 'invalid', 'message': result.get('message', 'Verification failed')})
-        except Exception as e:
-            return JsonResponse({'status': 'error', 'message': str(e)})
-    return JsonResponse({'status': 'error', 'message': 'Invalid method'})
+@api_view(['GET'])
+def download_ots_file(request, filename):
+    file_path = os.path.join('media', 'ots_files', filename)
+    if os.path.exists(file_path):
+        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=filename)
+    else:
+        raise Http404("OTS file not found.")
 
 
 @csrf_exempt
@@ -149,12 +147,10 @@ def login_user(request):
 @permission_classes([IsAuthenticated])
 def logout_user(request):
     try:
-        # Since JWT is stateless, logout is mostly frontend deleting token,
-        # but if you use token blacklisting you can blacklist here.
-        # For now, just return success.
         return Response({'message': 'Logout successful'}, status=status.HTTP_200_OK)
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
 @method_decorator(csrf_exempt, name='dispatch')
 class RegisterView(APIView):
@@ -184,19 +180,4 @@ class RegisterView(APIView):
         except Exception as e:
             return Response({"message": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-@api_view(['POST'])
-def upload_image(request):
-    image = request.FILES.get('image')
-    title = request.data.get('title', 'Untitled')
 
-    if not image:
-        return Response({'status': 'error', 'message': 'No image uploaded'}, status=400)
-
-    evidence = Evidence.objects.create(title=title, image=image)
-
-    return Response({
-        'status': 'complete',
-        'message': 'Image uploaded successfully',
-        'blockchainHash': evidence.blockchain_hash,
-        'imageUrl': evidence.image.url
-    })

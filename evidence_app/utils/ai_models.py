@@ -1,28 +1,10 @@
-import os
-import requests
 import tensorflow as tf
 import numpy as np
 from tensorflow.keras.preprocessing import image
-from pathlib import Path
+import os
 
-# Define model path
-MODEL_PATH = Path(__file__).resolve().parent / "vgg19.h5"
-
-# Download the model if it doesn't exist
-def download_model():
-    if not MODEL_PATH.exists():
-        print("Model not found. Downloading...")
-        url = "https://drive.google.com/uc?export=download&id=156qm5ArGZAueKbvRj727ZOopvvOBkHI4"
-        response = requests.get(url)
-        response.raise_for_status()
-        with open(MODEL_PATH, 'wb') as f:
-            f.write(response.content)
-        print("Model downloaded successfully.")
-
-# Call download
-download_model()
-
-# Load model
+# Use raw string for Windows paths and make it relative
+MODEL_PATH = os.path.join(os.path.dirname(__file__), 'vgg19.h5')
 model = tf.keras.models.load_model(MODEL_PATH)
 
 def check_tampering(image_path):
