@@ -34,8 +34,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = 'django-insecure-)-h-khokfl@h7k^^esvc%il82)o-i1_xwjy@mndo$f-=c=3j-t'
 
-DEBUG = False
-ALLOWED_HOSTS = ["*"]
+DEBUG = True
+
+ALLOWED_HOSTS = ['evidence-authen-backend-4.onrender.com', 'localhost', '127.0.0.1']
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
