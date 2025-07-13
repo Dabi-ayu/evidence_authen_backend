@@ -23,7 +23,7 @@ from rest_framework_simplejwt.views import (
 )
 
 urlpatterns = [
-      path('', RedirectView.as_view(url='api/'), name='root-redirect'),
+     
     path('admin/', admin.site.urls),
     # Use explicit string path for include() to prevent circular imports
     path('api/auth/', include('authentication.urls')),
