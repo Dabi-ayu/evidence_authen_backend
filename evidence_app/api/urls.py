@@ -1,4 +1,6 @@
 from django.urls import path
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+
 
 from .views import (
     VerifyEvidence,
@@ -16,9 +18,8 @@ urlpatterns = [
     # Core Evidence API
     path('verify/', VerifyEvidence.as_view(), name='verify_evidence'),
    
-     
-
-    # Image upload (optional but useful)
+     path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
   
 
     # Authentication (function-based)
