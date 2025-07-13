@@ -49,36 +49,8 @@ class VerifyEvidence(APIView):
             'confidence': evidence.confidence,  
             'metadata_status': metadata['status'],  
             'metadata_details': metadata['details'],
-            'blockchain_hash': blockchain_data.get("hash"),
-            'ots_url': ots_url
+            
         }  
         return Response(results, status=status.HTTP_200_OK)
 
 
-@csrf_exempt
-def verify_txid(request):
-    if request.method == 'POST':
-        try:
-            body = json.loads(request.body)
-            txid = body.get("txid")
-
-            ledger_path = os.path.join(os.path.dirname(__file__), '../utils/blockchain_ledger.json')
-            if not os.path.exists(ledger_path):
-                return JsonResponse({"status": "error", "message": "Ledger file not found"}, status=404)
-
-            with open(ledger_path, 'r') as f:
-                ledger = json.load(f)
-
-            for entry in ledger:
-                if entry["txid"] == txid:
-                    return JsonResponse({
-                        "status": "valid",
-                        "data": entry
-                    })
-
-            return JsonResponse({"status": "invalid", "message": "TXID not found in ledger"}, status=404)
-
-        except Exception as e:
-            return JsonResponse({"status": "error", "message": str(e)}, status=500)
-    else:
-        return JsonResponse({"status": "error", "message": "POST request required"}, status=400)

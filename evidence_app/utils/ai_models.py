@@ -7,83 +7,94 @@ from tensorflow.keras import backend as K
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input
 
-# ✅ Google Drive Setup
+# ✅ Model file setup
 MODEL_FILE_NAME = 'deepfake_detection_resnet50.h5'
 MODEL_PATH = os.path.join(os.path.dirname(__file__), MODEL_FILE_NAME)
-
-# ✅ Google Drive file ID
 DRIVE_FILE_ID = '1MaD9ZpejHMoULsSlD8ipMRTDkk8QAeyt'
 DRIVE_URL = f'https://drive.google.com/uc?id={DRIVE_FILE_ID}'
 
-# ✅ Download model if not found locally
-if not os.path.exists(MODEL_PATH):
-    print("[INFO] Model not found locally. Downloading from Google Drive...")
-    gdown.download(DRIVE_URL, MODEL_PATH, quiet=False)
-    print("[INFO] Download complete!")
+# ✅ Global model reference (lazy-loaded)
+_model = None
 
-def load_model_safely(model_path):
-    """Robust model loading with multiple fallbacks"""
+
+def download_model_if_needed():
+    """Download model from Google Drive if not found locally."""
+    if not os.path.exists(MODEL_PATH):
+        print("[INFO] Model not found locally. Downloading from Google Drive...")
+        gdown.download(DRIVE_URL, MODEL_PATH, quiet=False)
+        print("[INFO] Download complete!")
+
+
+def load_model_safely():
+    """Load model safely with fallback strategy."""
+    global _model
+
+    if _model is not None:
+        return _model  # Already loaded
+
+    # Step 1: Download if missing
+    download_model_if_needed()
+
+    # Step 2: Clear old Keras sessions
+    K.clear_session()
+
     try:
-        # Try standard loading first
-        return tf.keras.models.load_model(model_path)
+        # Try standard full model load
+        _model = tf.keras.models.load_model(MODEL_PATH)
+        print("[INFO] Model loaded successfully (full model).")
     except (ValueError, TypeError, OSError) as e:
-        print(f"[WARNING] Initial load failed: {str(e)}")
-    
-    try:
+        print(f"[WARNING] Full model load failed: {str(e)}")
         print("[INFO] Attempting to load model weights only...")
-        # Build model architecture
-        input_tensor = Input(shape=(224, 224, 3), name='input')
-        base_model = tf.keras.applications.ResNet50(
-            include_top=False,
-            input_tensor=input_tensor,
-            weights=None
-        )
-        x = base_model.output
-        x = tf.keras.layers.GlobalAveragePooling2D()(x)
-        x = tf.keras.layers.Dense(1024, activation='relu')(x)
-        x = tf.keras.layers.Dropout(0.5)(x)
-        x = tf.keras.layers.Dense(512, activation='relu')(x)
-        x = tf.keras.layers.Dropout(0.3)(x)
-        output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
-        model = Model(inputs=input_tensor, outputs=output)
-        
-        # Load weights only
-        model.load_weights(model_path)
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
-            loss='binary_crossentropy',
-            metrics=['accuracy']
-        )
-        return model
-    except Exception as e:
-        print(f"[ERROR] Weight loading failed: {str(e)}")
-        raise RuntimeError("Unable to load model weights. Please check model compatibility.")
+        try:
+            input_tensor = Input(shape=(224, 224, 3), name='input')
+            base_model = tf.keras.applications.ResNet50(
+                include_top=False,
+                input_tensor=input_tensor,
+                weights=None
+            )
+            x = base_model.output
+            x = tf.keras.layers.GlobalAveragePooling2D()(x)
+            x = tf.keras.layers.Dense(1024, activation='relu')(x)
+            x = tf.keras.layers.Dropout(0.5)(x)
+            x = tf.keras.layers.Dense(512, activation='relu')(x)
+            x = tf.keras.layers.Dropout(0.3)(x)
+            output = tf.keras.layers.Dense(1, activation='sigmoid')(x)
 
-# ✅ Clear old sessions and load model
-K.clear_session()
-try:
-    model = load_model_safely(MODEL_PATH)
-    print("[INFO] Model loaded successfully!")
-except Exception as e:
-    print(f"[CRITICAL] Model loading failed: {str(e)}")
-    model = None
+            _model = Model(inputs=input_tensor, outputs=output)
+            _model.load_weights(MODEL_PATH)
+            _model.compile(
+                optimizer=tf.keras.optimizers.Adam(learning_rate=1e-5),
+                loss='binary_crossentropy',
+                metrics=['accuracy']
+            )
+            print("[INFO] Model weights loaded successfully!")
+        except Exception as ex:
+            print(f"[CRITICAL] Weight loading failed: {str(ex)}")
+            _model = None
+            raise RuntimeError("Unable to load model or weights.")
+
+    return _model
+
 
 def preprocess_image(img_path):
-    """Preprocess image for ResNet50"""
+    """Preprocess image for ResNet50."""
+    model = load_model_safely()
     if model is None:
-        raise RuntimeError("Model not loaded - cannot process image")
-        
+        raise RuntimeError("Model not loaded - cannot preprocess image.")
+
     img = image.load_img(img_path, target_size=(224, 224))
     img_array = image.img_to_array(img)
     img_array = tf.keras.applications.resnet50.preprocess_input(img_array)
     return np.expand_dims(img_array, axis=0)
 
+
 def check_tampering(image_path):
-    """Run image through model and return label + confidence"""
-    if model is None:
-        return ('Error', 0.0)
-    
+    """Run image through model and return label + confidence."""
     try:
+        model = load_model_safely()
+        if model is None:
+            return ('Error', 0.0)
+
         img_array = preprocess_image(image_path)
         prediction = model.predict(img_array, verbose=0)[0][0]
         confidence = float(prediction)
