@@ -79,17 +79,6 @@ class VerifyEvidence(APIView):
             return Response({'error': str(e)}, status=500)
 
 
-
-@csrf_exempt
-@api_view(['GET'])
-def download_ots_file(request, filename):
-    file_path = os.path.join('media', 'ots_files', filename)
-    if os.path.exists(file_path):
-        return FileResponse(open(file_path, 'rb'), as_attachment=True, filename=filename)
-    else:
-        raise Http404("OTS file not found.")
-
-
 @csrf_exempt
 @api_view(['POST'])
 def register_user(request):
