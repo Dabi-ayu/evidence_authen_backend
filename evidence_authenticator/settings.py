@@ -165,3 +165,8 @@ SIMPLE_JWT = {
     'ROTATE_REFRESH_TOKENS': True,
     'BLACKLIST_AFTER_ROTATION': True,
 }
+
+CSRF_TRUSTED_ORIGINS = [
+    'https://evidence-authen-frontend.vercel.app',
+    'https://evidence-authen-backend-4.onrender.com'
+]
