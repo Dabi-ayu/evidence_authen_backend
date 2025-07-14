@@ -17,6 +17,8 @@ from ..models import Evidence
 from ..utils.ai_models import check_tampering
 from ..utils.metadata import verify_metadata
 from ..utils.imagehash import generate_sha256_hash
+from django.utils import timezone
+import datetime
 
 # Assuming this exists
 
@@ -38,6 +40,7 @@ class VerifyEvidence(APIView):
             evidence.save()
 
             img_path = evidence.image.path
+            original_filename = image_file.name
 
             # Log path to confirm image is saved
             print("[DEBUG] Saved image path:", img_path)
@@ -48,6 +51,8 @@ class VerifyEvidence(APIView):
 
             metadata = verify_metadata(img_path)
             print("[DEBUG] Metadata:", metadata)
+
+            readable_time = timezone.now().strftime("%B %d, %Y at %I:%M %p")
 
             hash_value = generate_sha256_hash(img_path)
             if not hash_value:
@@ -67,7 +72,11 @@ class VerifyEvidence(APIView):
                 'confidence': evidence.confidence,
                 'metadata_status': metadata['status'],
                 'metadata_details': metadata.get('details', {}),
+                'metadata_device': metadata.get('device'),  # Add this
+                'metadata_location': metadata.get('address'),  # Add this
                 'image_hash': hash_value,
+                'filename': original_filename, 
+                'timestamp': readable_time,
             }
             print("[DEBUG] Response payload:", results)
             return Response(results, status=200)
