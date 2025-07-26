@@ -22,15 +22,10 @@ This project provides a forensic tool designed for legal professionals to authen
 🧪 Image Upload, Verification, and Reporting Interface
 
 
-🏗️ Architecture
+<h2>🏗️ Architecture </h2>
 Frontend: React + Tailwind CSS
 
 Backend: Django REST Framework
-
-
-
-
-
 
 AI Model: ResNet50 fine-tuned for tampering detection
 
@@ -55,17 +50,17 @@ Geopy
 
 pip, npm, virtualenv
 
-🐍 Backend Setup (Django)
-git clone https://github.com/yourusername/image-auth-system.git
-cd image-auth-system/backend
+<h1> 🐍 Backend Setup (Django) </h1>
+git clone https://github.com/yourusername/image_authen_backend.git
+cd image_authen_backend
 
-# Create virtual environment
+<h3> # Create virtual environment </h3>
 python -m venv env
 source env/bin/activate  
 
 on Windows: env\Scripts\activate
 
-# Install dependencies
+<h3> # Install dependencies </h3>
 pip install -r requirements.txt
 
 # Run migrations and start server
@@ -73,7 +68,7 @@ python manage.py migrate
 python manage.py runserver
 
 
-🙋‍♀️ Author
+<h4> 🙋‍♀️ Author </h4>
 Dabi Clementina Ayu
 Final Year Computer Engineering Student
 University of Bamenda
